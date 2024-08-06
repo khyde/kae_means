@@ -1,6 +1,7 @@
 .DS*
 .*
 _*
+.ipynb_checkpoints
 
 !.gitignore
 
