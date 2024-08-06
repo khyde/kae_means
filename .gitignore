@@ -1,0 +1,8 @@
+.DS*
+.*
+_*
+
+!.gitignore
+
+*.log
+*.LOG
