@@ -1,5 +1,7 @@
 import xarray as xr
 import pandas
+import numpy as np
+from math import exp
 
 def psc(chl,sst,version='v1.0'):
     """
@@ -34,23 +36,36 @@ This routine is provided AS IS without any express or implied warranties whatsoe
     """
 
     # ===> Look for CHL & SST and make sure the data arrays match
-    if len(chl) != len(sst): 
-        print('ERROR: the length of the CHL and SST do not match.')
+ #   if len(chl) != len(sst): 
+ #       print('ERROR: the length of the CHL and SST do not match.')
 
     # ===> Initialize the algorithm coefficients
     match version:
         case 'v1.0': 
-          coeff1 = 0.8337
-          coeff2 = 0.7830
-          coeff3 = 0.1984
-          coeff4 = 0.3956
           sst_file = 'TURNER_PSIZE_SST_LUT_VER1.csv'
         
         case _: 
-            print('ERROR: Version ' + VERSION + ' not recognized.')
+            print('ERROR: Version ' + version + ' not recognized.')
 
     # ===> Read the SST look up file
-    sst_table = pandas.read_csv(sst_file)
+    sstlut = pandas.read_csv(sst_file)
+    sst_table = np.array(sstlut)
+     
+    # ===> Convert SST values below/above the LUT min/max SST to the min/max SST in the LUT
+    sst = xr.where(sst>np.max(sst_table[:,0]),np.max(sst_table[:,0]), sst)
+    sst = xr.where(sst<np.min(sst_table[:,0]),np.min(sst_table[:,0]), sst)
+
+    # ===> Find the SST value in the LUT
+    sst_coeffs = sst_table[np.argmin(np.abs(sst_table[:, 0] - sst))]
+
+    # ===> Calculate the phytoplankton size class fractions
+    fpico = (sst_coeffs[3] * (1 - exp(-1 * (sst_coeffs[4] / sst_coeffs[3]) * chl))) / chl
+    fnanopico = (sst_coeffs[1] * (1 - exp(-1 * (sst_coeffs[2] / sst_coeffs[1]) * chl))) / chl  
+    fnano = fnanopico - fpico
+    fmicro = (chl - (sst_coeffs[1] * (1 - exp(-1 * (sst_coeffs[2] / sst_coeffs[1]) * chl)))) / chl 
+    
+    return [fpico,fnanopico,fnano,fmicro]
+
 
             
 
