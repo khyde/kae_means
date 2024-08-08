@@ -31,11 +31,11 @@ def getCHL():
         lat=np.where((dataset.lat.values>=20) & (dataset.lat.values<=50))[0])
     
         # Save date as coord (why not as variable?)
-        d = datetime.fromisoformat(dataset.attrs['time_coverage_start'][:-1]).astimezone(timezone.utc)
-        ds_grid.append(dataset.assign(date = d).set_coords("date"))
+        d = datetime.fromisoformat(dataset.attrs['time_coverage_start'][:-1])
+        ds_grid.append(dataset.assign(time = d).set_coords("time"))
     
     # convert list to nested dataset
-    dataset_chl = xr.combine_nested(ds_grid,concat_dim="date")
+    dataset_chl = xr.combine_nested(ds_grid,concat_dim="time")
     return dataset_chl
 
 

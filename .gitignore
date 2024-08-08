@@ -2,8 +2,12 @@
 .*
 _*
 .ipynb_checkpoints
+core.*
 
 !.gitignore
 
+
 *.log
 *.LOG
+
+*.nc
