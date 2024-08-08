@@ -1,13 +1,11 @@
 .DS*
-.*
 _*
 .ipynb_checkpoints
 core.*
-
-!.gitignore
-!/data
 
 *.log
 *.LOG
 
 *.nc
+!data/*.nc
+!data/**/*.nc
