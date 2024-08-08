@@ -5,7 +5,7 @@ _*
 core.*
 
 !.gitignore
-
+!/data
 
 *.log
 *.LOG
