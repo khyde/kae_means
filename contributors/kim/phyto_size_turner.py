@@ -1,7 +1,7 @@
 import xarray as xr
 import pandas
 import numpy as np
-from math import exp
+from datetime import datetime
 
 def psc(chl,sst,version='v1.0'):
     """
@@ -12,16 +12,24 @@ def psc(chl,sst,version='v1.0'):
       SST....... Sea surface temperature data
       
     OPTIONAL INPUTS
-      VERSION... Version of the code to run
+      VERSION... Version of the look up file to use
 
-    KEYWORDS
+    KEYWORDS:
+      None
 
     OUTPUTS
+      Phytoplankton size class (micro,nano, and picoplankton fractions and input chlorophyll.
 
-    EXAMPLES
+    REQUIRED FILES:
+      TURNER_PSIZE_SST_LUT_VER1.csv
+    
+    EXAMPLES:
 
-    NOTES
+    NOTES:
+      To calculate phytoplankton size class chlorophyll contribution, multiply total chlorophyll with each size class fraction.
 
+    REFERENCE:
+      Turner, K. J., C. B. Mouw, K. J. W. Hyde, R. Morse, and A. B. Ciochetto (2021), Optimization and assessment of phytoplankton size class algorithms for ocean color data on the Northeast U.S. continental shelf, Remote Sensing of Environment, 267, 112729, [doi:https://doi.org/10.1016/j.rse.2021.112729]
     COPYRIGHT: 
         Copyright (C) 2024, Department of Commerce, National Oceanic and Atmospheric Administration, National Marine Fisheries Service,
         Northeast Fisheries Science Center, Narragansett Laboratory.
@@ -33,13 +41,12 @@ This routine is provided AS IS without any express or implied warranties whatsoe
   
     MODIFICATION HISTORY:
         Aug 06, 2024 - KJWH: Initial code written
+        Aug 08, 2024 - KJWH: Updated how the coefficients are extracted and the data are returned
     """
 
-    # ===> Look for CHL & SST and make sure the data arrays match
- #   if len(chl) != len(sst): 
- #       print('ERROR: the length of the CHL and SST do not match.')
-
-    # ===> Initialize the algorithm coefficients
+def psc(chlarr,sstarr):
+    
+    # ===> Get the SST look-up file (can be updated with new LUT versions)
     match version:
         case 'v1.0': 
           sst_file = 'TURNER_PSIZE_SST_LUT_VER1.csv'
@@ -47,24 +54,23 @@ This routine is provided AS IS without any express or implied warranties whatsoe
         case _: 
             print('ERROR: Version ' + version + ' not recognized.')
 
-    # ===> Read the SST look up file
-    sstlut = pandas.read_csv(sst_file)
-    sst_table = np.array(sstlut)
-     
-    # ===> Convert SST values below/above the LUT min/max SST to the min/max SST in the LUT
-    sst = xr.where(sst>np.max(sst_table[:,0]),np.max(sst_table[:,0]), sst)
-    sst = xr.where(sst<np.min(sst_table[:,0]),np.min(sst_table[:,0]), sst)
-
-    # ===> Find the SST value in the LUT
-    sst_coeffs = sst_table[np.argmin(np.abs(sst_table[:, 0] - sst))]
+    
+    sstlut = pandas.read_csv(sst_file,index_col='SST')
+    sstlut = sstlut.to_xarray()
+    
+    # ===> Find the coefficients from the LUT based on the input SST
+    sst_coeffs = sstlut.sel({"SST": sstarr}, method="nearest")
 
     # ===> Calculate the phytoplankton size class fractions
-    fpico = (sst_coeffs[3] * (1 - exp(-1 * (sst_coeffs[4] / sst_coeffs[3]) * chl))) / chl
-    fnanopico = (sst_coeffs[1] * (1 - exp(-1 * (sst_coeffs[2] / sst_coeffs[1]) * chl))) / chl  
+    fpico = (sst_coeffs.COEFF3 * (1 - np.exp(-1 * (sst_coeffs.COEFF4 / sst_coeffs.COEFF3) * chlarr))) / chlarr
+    fnanopico = (sst_coeffs.COEFF1 * (1 - np.exp(-1 * (sst_coeffs.COEFF2 / sst_coeffs.COEFF1) * chlarr))) / chlarr  
     fnano = fnanopico - fpico
-    fmicro = (chl - (sst_coeffs[1] * (1 - exp(-1 * (sst_coeffs[2] / sst_coeffs[1]) * chl)))) / chl 
+    fmicro = (chlarr - (sst_coeffs.COEFF1 * (1 - np.exp(-1 * (sst_coeffs.COEFF2 / sst_coeffs.COEFF1) * chlarr)))) / chlarr 
+
+    phyto = xr.Dataset({"fmicro":fmicro,"fnano":fnano,"fpico":fpico,"chlor_a":chlarr})
     
-    return [fpico,fnanopico,fnano,fmicro]
+    return phyto
+    
 
 
             
