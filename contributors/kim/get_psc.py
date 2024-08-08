@@ -2,10 +2,11 @@ import xarray as xr
 import pandas
 import numpy as np
 from datetime import datetime
+from datetime import date
 from getSST8day import SST8day
 from get_L3_8Day import get_L3_8Day
 
-def run_psc(start_date,end_date,eightday=1):
+def run_psc(start_date,end_date=date.today()-timedelta(days=8),latmin=20,latmax=50,lonmin=-80,lonmax=-45,):
     """
     PURPOSE: To get the CHL and SST data and run the PHYTO_SIZE_TURNER model to calculate phytoplankton size classes using the Northeast U.S. regionally tuned phytoplankton size class algorithm based on Turner et al. (2021).
     
@@ -14,10 +15,14 @@ def run_psc(start_date,end_date,eightday=1):
       
     OPTIONAL INPUTS
       END_DATE...... The end date for getting the files
+      LATMIN......... Minimum latitude of the boundingn box
+      LATMAX......... Maximum latidue of the boundingn box
+      LONMIN......... Minimum longitude of the boundingn box
+      LONMAX......... Maximum longitude of the boundingn box
 
     KEYWORDS:
-      EIGHTDAY... Set to use 8-day mean data (default=1)
-      NETCDF..... Set to output a netcdf of the data
+      TODO - EIGHTDAY... Set to use 8-day mean data (default=1)
+      TODO - NETCDF..... Set to output a netcdf of the data
 
     OUTPUTS
       Phytoplankton size class (micro,nano, and picoplankton fractions and input chlorophyll data.
@@ -39,13 +44,13 @@ This routine is provided AS IS without any express or implied warranties whatsoe
     MODIFICATION HISTORY:
         Aug 08, 2024 - KJWH: Initial code written
     """
-
+    
     # ===> Get the chlorohyll data and extract the array
-    chl = get_L3_8Day(CHL,start_date,end_date)
+    chl = get_L3_8Day(CHL,start_date,end_date,lonW=lonmin,lonE=lonmax,latN=latmax,latS=latmin)
     chlarr = chl['chlor_a']
 
     # ===> Get the SST data, regrid to the chlorophyll and extract the array
-    sst = SST8day(start_date,end_date)
+    sst = SST8day(start_date,end_date,latmin=latmin,latmax=latmax,lonmin=lonmin,lonmax=lonmax)
     sstarr = sst.interp(latitude=chlarr["lat"],longitude=chlarr["lon"],method='nearest')
     # ===> Run the phytoplankton size class model
     psize = psc(chlarr,sstarr)
